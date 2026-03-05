@@ -19,3 +19,8 @@ Download latest source for debian **x64**
 ```bash
 wget -O vscode-server-debian-x64.tar.gz "https://update.code.visualstudio.com/commit:${VSCODESERVER}/server-linux-x64/stable"
 ```
+
+Download extensions by Id using
+```bash
+https://cypherpunksamurai.github.io/vsix-downloader-webui/
+```
