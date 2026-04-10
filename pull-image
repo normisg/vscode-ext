@@ -5,6 +5,9 @@ IMAGE_NAME=$1
 CHUNK_SIZE="50M"
 TARGET_DIR="images"
 
+# Exit on error
+set -e
+
 # Validation
 if [ -z "$IMAGE_NAME" ]; then
     echo "Usage: $0 <docker-image-name>"
@@ -25,14 +28,15 @@ echo "--- Saving image to compressed tarball ---"
 docker save "$IMAGE_NAME" | gzip > "${OUTPUT_NAME}.tar.gz"
 
 echo "--- Removing docker image ---"
-docker rmi "$IMAGE_NAME"
+docker rmi "$IMAGE_NAME" || echo "Warning: Failed to remove image (may be in use or not found)"
 
 echo "--- Splitting into $CHUNK_SIZE chunks in '$TARGET_DIR/' ---"
 # Only split if file is larger than chunk size
-FILE_SIZE=$(stat -c%s "${OUTPUT_NAME}.tar.gz")
+FILE_SIZE=$(stat -c%s "${OUTPUT_NAME}.tar.gz" 2>/dev/null || stat -f%z "${OUTPUT_NAME}.tar.gz")
 CHUNK_SIZE_BYTES=$(numfmt --from=iec "$CHUNK_SIZE")
 if [ "$FILE_SIZE" -gt "$CHUNK_SIZE_BYTES" ]; then
     split -b "$CHUNK_SIZE" -d "${OUTPUT_NAME}.tar.gz" "$TARGET_DIR/${OUTPUT_NAME}.tar.gz.part"
+    rm "${OUTPUT_NAME}.tar.gz"
 else
     mv "${OUTPUT_NAME}.tar.gz" "$TARGET_DIR/${OUTPUT_NAME}.tar.gz"
     echo "File smaller than $CHUNK_SIZE, not split."
