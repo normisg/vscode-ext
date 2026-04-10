@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Configuration
+IMAGE_NAME=$1
+CHUNK_SIZE="50M"
+TARGET_DIR="images"
+
+# Validation
+if [ -z "$IMAGE_NAME" ]; then
+    echo "Usage: $0 <docker-image-name>"
+    exit 1
+fi
+
+# 1. Create the target directory if it doesn't exist
+mkdir -p "$TARGET_DIR"
+
+# 2. Generate sanitized OUTPUT_NAME
+OUTPUT_NAME=$(echo "$IMAGE_NAME" | sed 's/[^a-zA-Z0-9]/-/g')
+
+echo "--- Pulling image: $IMAGE_NAME ---"
+docker pull "$IMAGE_NAME"
+
+echo "--- Saving image to compressed tarball ---"
+# We save the temp file in the current dir for easy cleanup
+docker save "$IMAGE_NAME" | gzip > "${OUTPUT_NAME}.tar.gz"
+
+echo "--- Splitting into $CHUNK_SIZE chunks in '$TARGET_DIR/' ---"
+# Directing the split output into the target directory
+split -b "$CHUNK_SIZE" -d "${OUTPUT_NAME}.tar.gz" "$TARGET_DIR/${OUTPUT_NAME}.tar.gz.part"
+
+echo "--- Cleaning up large tarball ---"
+rm "${OUTPUT_NAME}.tar.gz"
+
+echo "--- Process Complete ---"
+echo "Chunked files are located in: $TARGET_DIR/"
+ls -lh "$TARGET_DIR/${OUTPUT_NAME}.tar.gz.part"*
