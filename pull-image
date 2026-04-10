@@ -24,13 +24,20 @@ echo "--- Saving image to compressed tarball ---"
 # We save the temp file in the current dir for easy cleanup
 docker save "$IMAGE_NAME" | gzip > "${OUTPUT_NAME}.tar.gz"
 
-echo "--- Splitting into $CHUNK_SIZE chunks in '$TARGET_DIR/' ---"
-# Directing the split output into the target directory
-split -b "$CHUNK_SIZE" -d "${OUTPUT_NAME}.tar.gz" "$TARGET_DIR/${OUTPUT_NAME}.tar.gz.part"
+echo "--- Removing docker image ---"
+docker rmi "$IMAGE_NAME"
 
-echo "--- Cleaning up large tarball ---"
-rm "${OUTPUT_NAME}.tar.gz"
+echo "--- Splitting into $CHUNK_SIZE chunks in '$TARGET_DIR/' ---"
+# Only split if file is larger than chunk size
+FILE_SIZE=$(stat -c%s "${OUTPUT_NAME}.tar.gz")
+CHUNK_SIZE_BYTES=$(numfmt --from=iec "$CHUNK_SIZE")
+if [ "$FILE_SIZE" -gt "$CHUNK_SIZE_BYTES" ]; then
+    split -b "$CHUNK_SIZE" -d "${OUTPUT_NAME}.tar.gz" "$TARGET_DIR/${OUTPUT_NAME}.tar.gz.part"
+else
+    mv "${OUTPUT_NAME}.tar.gz" "$TARGET_DIR/${OUTPUT_NAME}.tar.gz"
+    echo "File smaller than $CHUNK_SIZE, not split."
+fi
 
 echo "--- Process Complete ---"
-echo "Chunked files are located in: $TARGET_DIR/"
-ls -lh "$TARGET_DIR/${OUTPUT_NAME}.tar.gz.part"*
+echo "Files are located in: $TARGET_DIR/"
+ls -lh "$TARGET_DIR/${OUTPUT_NAME}.tar.gz"*
