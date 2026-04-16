@@ -1,0 +1,224 @@
+#!/bin/bash
+# Deployment script with interactive menu
+# This script provides a menu to deploy infrastructure and initialize Vault
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Function to deploy infrastructure
+deploy_infrastructure() {
+    print_info "Starting infrastructure deployment..."
+    echo ""
+    
+    # Check if ansible-playbook is available
+    if ! command -v ansible-playbook &> /dev/null; then
+        print_error "ansible-playbook is not installed or not in PATH"
+        return 1
+    fi
+    
+    # Check if site.yml exists
+    if [ ! -f "site.yml" ]; then
+        print_error "site.yml not found in current directory"
+        return 1
+    fi
+    
+    print_info "Running Ansible playbook..."
+    ansible-playbook site.yml
+    
+    if [ $? -eq 0 ]; then
+        print_success "Infrastructure deployment completed successfully!"
+    else
+        print_error "Infrastructure deployment failed"
+        return 1
+    fi
+}
+
+# Function to deploy only Cilium
+deploy_cilium() {
+    print_info "Starting Cilium deployment..."
+    echo ""
+    
+    # Check if ansible-playbook is available
+    if ! command -v ansible-playbook &> /dev/null; then
+        print_error "ansible-playbook is not installed or not in PATH"
+        return 1
+    fi
+    
+    # Check if site.yml exists
+    if [ ! -f "site.yml" ]; then
+        print_error "site.yml not found in current directory"
+        return 1
+    fi
+    
+    print_info "Running Ansible playbook for Cilium..."
+    ansible-playbook site.yml --tags cilium
+    
+    if [ $? -eq 0 ]; then
+        print_success "Cilium deployment completed successfully!"
+    else
+        print_error "Cilium deployment failed"
+        return 1
+    fi
+}
+
+# Function to initialize Vault
+initialize_vault() {
+    print_info "Starting Vault initialization..."
+    echo ""
+    
+    # Check if vault-integration.sh exists
+    if [ ! -f "scripts/vault-integration.sh" ]; then
+        print_error "scripts/vault-integration.sh not found"
+        return 1
+    fi
+    
+    # Check if script is executable
+    if [ ! -x "scripts/vault-integration.sh" ]; then
+        print_warning "Making vault-integration.sh executable..."
+        chmod +x scripts/vault-integration.sh
+    fi
+    
+    print_info "Running Vault setup..."
+    ./scripts/vault-integration.sh setup
+    
+    if [ $? -eq 0 ]; then
+        print_success "Vault initialization completed successfully!"
+    else
+        print_error "Vault initialization failed"
+        return 1
+    fi
+}
+
+# Function to handle maintenance submenu
+maintenance() {
+    while true; do
+        clear
+        echo "=========================================="
+        echo "  Maintenance Menu"
+        echo "=========================================="
+        echo ""
+        echo "1) Stop Services"
+        echo "2) Start Services"
+        echo "3) Clear Data"
+        echo "4) Back to Main Menu"
+        echo ""
+        echo "=========================================="
+        read -p "Please select an option [1-4]: " maint_choice
+        
+        case $maint_choice in
+            1)
+                echo ""
+                print_info "Stopping services..."
+                # Add stop services logic here
+                print_warning "Stop services not implemented"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                echo ""
+                print_info "Starting services..."
+                # Add start services logic here
+                print_warning "Start services not implemented"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                echo ""
+                print_info "Clearing data..."
+                # Add clear data logic here
+                print_warning "Clear data not implemented"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            4)
+                break
+                ;;
+            *)
+                echo ""
+                print_error "Invalid option. Please select 1, 2, 3, or 4."
+                sleep 2
+                ;;
+        esac
+    done
+}
+
+# Function to display menu
+show_menu() {
+    clear
+    echo "=========================================="
+    echo "  Kubernetes Air-Gapped Deployment Menu"
+    echo "=========================================="
+    echo ""
+    echo "1) Deploy All Infrastructure"
+    echo "2) Deploy Cilium Only"
+    echo "3) Initialize Vault"
+    echo "4) Maintenance"
+    echo "5) Exit"
+    echo ""
+    echo "=========================================="
+}
+
+# Main loop
+while true; do
+    show_menu
+    read -p "Please select an option [1-5]: " choice
+    
+    case $choice in
+        1)
+            echo ""
+            deploy_infrastructure
+            echo ""
+            read -p "Press Enter to continue..."
+            ;;
+        2)
+            echo ""
+            deploy_cilium
+            echo ""
+            read -p "Press Enter to continue..."
+            ;;
+        3)
+            echo ""
+            initialize_vault
+            echo ""
+            read -p "Press Enter to continue..."
+            ;;
+        4)
+            echo ""
+            maintenance
+            echo ""
+            ;;
+        5)
+            echo ""
+            print_info "Exiting..."
+            exit 0
+            ;;
+        *)
+            echo ""
+            print_error "Invalid option. Please select 1, 2, 3, 4, or 5."
+            sleep 2
+            ;;
+    esac
+done
